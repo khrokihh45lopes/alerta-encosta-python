@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# historico.json e relatorio.csv NÃO são ignorados: fazem parte da entrega.
