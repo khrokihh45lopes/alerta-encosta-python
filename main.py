@@ -45,7 +45,7 @@ CONFIG: Config = {
     "nome": "Alerta Encosta",
     "local": "Rio de Janeiro",  # TODO equipe: troque pelo bairro/encosta real
     "thingspeak": {
-        "canal_id": "",  # TODO equipe: número do canal (ex.: "2712345")
+        "canal_id": "3584820",  # canal público da equipe no ThingSpeak
         "chave_leitura": "",  # Read API Key; deixe vazio se o canal for público
         "resultados": 30,  # quantas leituras buscar (mínimo 20)
         "timeout_s": 8,
