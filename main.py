@@ -43,7 +43,7 @@ FAIXAS = ("NORMAL", "ATENÇÃO", "PERIGO")
 # ----------------------------------------------------------------------
 CONFIG: Config = {
     "nome": "Alerta Encosta",
-    "local": "Rio de Janeiro",  # TODO equipe: troque pelo bairro/encosta real
+    "local": "Rio de Janeiro",  # comunidade de referência: Morro do Borel (Ficha do README)
     "thingspeak": {
         "canal_id": "3584820",  # canal público da equipe no ThingSpeak
         "chave_leitura": "",  # Read API Key; deixe vazio se o canal for público
