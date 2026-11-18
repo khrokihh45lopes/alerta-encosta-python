@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -209,9 +210,12 @@ def ler_medidas(feed: Feed, config: Config) -> dict[str, float] | None:
     medidas: dict[str, float] = {}
     for nome, m in config["medidas"].items():
         try:
-            medidas[nome] = float(feed[m["campo"]])
+            valor = float(feed[m["campo"]])
         except (KeyError, TypeError, ValueError):
             return None
+        if not math.isfinite(valor):  # "nan" e "inf" viram float, mas não são uma medida
+            return None
+        medidas[nome] = valor
     return medidas
 
 
@@ -286,16 +290,24 @@ def leitura_valida(item: object, config: Config) -> bool:
     if not isinstance(item, dict):
         return False
     try:
-        datetime.fromisoformat(item["horario"])
-        float(item["risco"])
+        horario = datetime.fromisoformat(item["horario"])
+        medidas = item["medidas"]
         return (
-            isinstance(item["id"], int)
-            and isinstance(item["medidas"], dict)
-            and set(item["medidas"]) == set(config["medidas"])
+            horario.tzinfo is not None  # sem fuso, não dá para comparar com as outras leituras
+            and isinstance(item["id"], int)
+            and numero_valido(item["risco"])
+            and isinstance(medidas, dict)
+            and set(medidas) == set(config["medidas"])
+            and all(numero_valido(valor) for valor in medidas.values())
             and item["faixa"] in FAIXAS
         )
     except (KeyError, TypeError, ValueError):
         return False
+
+
+def numero_valido(valor: object) -> bool:
+    """True se for um número de verdade: int ou float finito (texto e True/False não valem)."""
+    return isinstance(valor, (int, float)) and not isinstance(valor, bool) and math.isfinite(valor)
 
 
 def carregar_historico(config: Config) -> list[Leitura]:
@@ -311,17 +323,19 @@ def carregar_historico(config: Config) -> list[Leitura]:
 
 
 def mesclar_historico(historico: list[Leitura], novas: list[Leitura]) -> tuple[list[Leitura], int]:
-    """Junta as leituras novas ao histórico sem repetir horário. Devolve (histórico, quantas entraram).
+    """Junta as leituras novas ao histórico sem repetir. Devolve (histórico, quantas entraram).
 
-    A leitura é reconhecida pelo horário, e não pelo entry_id, porque o ThingSpeak
-    recomeça o entry_id do 1 quando o canal é limpo (Clear Channel) ou trocado.
+    Cada leitura é reconhecida pelo par (entry_id, horário), guardado num set.
+    Só o entry_id não basta: o ThingSpeak recomeça a numeração do 1 quando o
+    canal é limpo (Clear Channel) ou trocado.
     """
-    horarios_conhecidos: set[str] = {leitura["horario"] for leitura in historico}
+    conhecidas: set[tuple[int, str]] = {(leitura["id"], leitura["horario"]) for leitura in historico}
     adicionadas = 0
     for leitura in novas:
-        if leitura["horario"] not in horarios_conhecidos:
+        chave = (leitura["id"], leitura["horario"])
+        if chave not in conhecidas:
             historico.append(leitura)
-            horarios_conhecidos.add(leitura["horario"])
+            conhecidas.add(chave)
             adicionadas += 1
     historico.sort(key=lambda leitura: datetime.fromisoformat(leitura["horario"]))
     return historico, adicionadas
@@ -330,9 +344,9 @@ def mesclar_historico(historico: list[Leitura], novas: list[Leitura]) -> tuple[l
 def exportar_csv(leituras: list[Leitura], config: Config, caminho: Path = ARQ_RELATORIO) -> bool:
     """Exporta as leituras em CSV com cabeçalho, separado por ponto e vírgula.
 
-    Colunas: id;data;horario;<uma por medida>;risco;faixa. O ";" e o utf-8-sig
-    fazem o Excel em português abrir em colunas e com acentos certos.
-    Devolve True se deu certo.
+    Colunas: id;data;horario;<uma por medida>;risco;faixa. O ";", a vírgula
+    decimal e o utf-8-sig fazem o Excel em português abrir em colunas, com
+    números de verdade e acentos certos. Devolve True se deu certo.
     """
     nomes = list(config["medidas"].keys())
     try:
@@ -340,13 +354,18 @@ def exportar_csv(leituras: list[Leitura], config: Config, caminho: Path = ARQ_RE
             escritor = csv.writer(arquivo, delimiter=";")
             escritor.writerow(["id", "data", "horario", *nomes, "risco", "faixa"])
             for leitura in leituras:
-                valores = [leitura["medidas"][nome] for nome in nomes]
+                valores = [numero_br(leitura["medidas"][nome]) for nome in nomes]
                 data, hora = leitura["horario"][:10], leitura["horario"][11:19]  # "2026-11-18T02:52:03-03:00"
-                escritor.writerow([leitura["id"], data, hora, *valores, leitura["risco"], leitura["faixa"]])
+                escritor.writerow([leitura["id"], data, hora, *valores, numero_br(leitura["risco"]), leitura["faixa"]])
         return True
     except OSError as erro:
         print(f"  [aviso] Não consegui exportar o CSV ({erro}). O arquivo está aberto no Excel?")
         return False
+
+
+def numero_br(valor: float) -> str:
+    """Escreve o número com vírgula decimal, como o Excel em português espera: 72.4 -> '72,4'."""
+    return str(valor).replace(".", ",")
 
 
 # ======================================================================
@@ -612,18 +631,24 @@ def ler_numero(mensagem: str, minimo: float, maximo: float) -> float | None:
         print(f"  Valor fora do intervalo: use de {minimo:g} a {maximo:g}.")
 
 
-def ler_horario(mensagem: str, ano: int) -> datetime | None:
-    """Pede um horário no formato DD/MM HH:MM (hora do Rio). Enter vazio cancela."""
+def ler_horario(mensagem: str, ultimo: datetime) -> datetime | None:
+    """Pede um horário no formato DD/MM HH:MM (hora do Rio). Enter vazio cancela.
+
+    O ano é o da última leitura do histórico. Se a data digitada cairia depois
+    dela, é do ano anterior (histórico que passa da virada do ano).
+    """
     while True:
         texto = ler_texto(mensagem)
         if not texto:
             return None
         try:
-            horario = datetime.strptime(f"{texto} {ano}", "%d/%m %H:%M %Y")
+            horario = datetime.strptime(f"{texto} {ultimo.year}", "%d/%m %H:%M %Y").replace(tzinfo=FUSO_RIO)
+            if horario > ultimo + timedelta(days=1):
+                horario = datetime.strptime(f"{texto} {ultimo.year - 1}", "%d/%m %H:%M %Y").replace(tzinfo=FUSO_RIO)
         except ValueError:
             print("  Use o formato DD/MM HH:MM (ex.: 03/11 18:30).")
             continue
-        return horario.replace(tzinfo=FUSO_RIO)
+        return horario
 
 
 # ======================================================================
@@ -698,8 +723,8 @@ def acao_buscar_horario(estado: dict, config: Config) -> None:
         return
     primeira, ultima = formatar_hora(historico[0]["horario"]), formatar_hora(historico[-1]["horario"])
     print(f"\n  O histórico vai de {primeira} a {ultima}.")
-    ano = datetime.fromisoformat(historico[-1]["horario"]).year
-    alvo = ler_horario("  Horário (DD/MM HH:MM, Enter cancela): ", ano)
+    ultimo = datetime.fromisoformat(historico[-1]["horario"])
+    alvo = ler_horario("  Horário (DD/MM HH:MM, Enter cancela): ", ultimo)
     if alvo is None:
         return
     leitura = buscar_por_horario(historico, alvo)
