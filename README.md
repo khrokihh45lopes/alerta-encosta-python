@@ -25,7 +25,7 @@ Quem usa: o **agente comunitário de Defesa Civil** (voluntário do NUDEC da com
 
 | Nome completo | RM | Turma |
 |---|---|---|
-| Victor Lopes Tavares da Fonseca | 571315 | **TODO** |
+| Victor Lopes Tavares da Fonseca | 571315 | 1ESSRA-2026 |
 
 ## Como as partes conversam
 
