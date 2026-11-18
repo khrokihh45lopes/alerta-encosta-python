@@ -179,11 +179,15 @@ def obter_feeds(config: Config) -> tuple[list[Feed], str]:
         return carregar_backup(), "backup.json"
     try:
         feeds = buscar_feeds_thingspeak(config)
-        salvar_backup(feeds)
-        return feeds, "ThingSpeak"
     except requests.RequestException as erro:
         print(f"  [aviso] Sem acesso ao ThingSpeak ({erro}). Usando backup.json.")
         return carregar_backup(), "backup.json"
+    leituras, _ = converter_feeds(feeds, config)
+    if not leituras:  # canal novo ou só com campos vazios: não apagar o backup bom
+        print("  [aviso] O canal do ThingSpeak ainda não tem leituras válidas. Usando backup.json.")
+        return carregar_backup(), "backup.json"
+    salvar_backup(feeds)
+    return feeds, "ThingSpeak"
 
 
 # ======================================================================
