@@ -59,20 +59,29 @@ python main.py
 
 > **Windows:** se `python` abrir a Microsoft Store, use o lançador `py`: `py -m pip install -r requirements.txt` e depois `py main.py`.
 
-Sem configurar nada, o programa já funciona com o `backup.json` (dados **simulados** de uma noite de chuva, explicados abaixo).
+Sem internet, o programa usa o `backup.json` (a última busca boa do canal) e funciona do mesmo jeito.
 
-### Ligar no canal da equipe
+## De onde vêm os dados
 
-No topo do `main.py`, no dicionário `CONFIG`:
+- **Canal do ThingSpeak:** [3584820](https://thingspeak.mathworks.com/channels/3584820) (público), alimentado pelo ESP32 da simulação no [Wokwi](https://wokwi.com/projects/481004743836209153)
+- **Endereço da API:** `https://api.thingspeak.com/channels/3584820/feeds.json?results=30`
+- **Backup offline:** `backup.json`. Toda busca que devolve pelo menos uma leitura válida substitui o backup; uma busca vazia não apaga o backup bom.
+- **Origem dos valores:** as duas medidas vêm do ESP32 no Wokwi. A umidade é um potenciômetro que faz o papel do sensor capacitivo de solo, e a inclinação vem do acelerômetro MPU6050.
+
+| Campo do canal | Medida | Unidade |
+|---|---|---|
+| `field1` | Umidade do solo | % |
+| `field2` | Inclinação do terreno | graus |
+| `field3` e `field4` | Risco e faixa calculados no ESP32 (o Python recalcula e não usa esses dois) | — |
+
+O canal fica no topo do `main.py`, no dicionário `CONFIG`:
 
 ```python
 "thingspeak": {
-    "canal_id": "2712345",     # número do canal (ThingSpeak > Channel Settings)
+    "canal_id": "3584820",     # canal público da equipe
     "chave_leitura": "",       # Read API Key, só se o canal for privado
     ...
 ```
-
-Na primeira busca que der certo, o `backup.json` é substituído pelos dados reais do canal.
 
 ---
 
@@ -90,7 +99,24 @@ Na primeira busca que der certo, o `backup.json` é substituído pelos dados rea
 | 8 | Compara o último dia do histórico com o anterior: risco médio, pico e leituras em PERIGO *(para ir além)* |
 | 0 | Sair |
 
-Os três itens "para ir além" do enunciado estão feitos: ranking (3), busca por horário (7) e hoje × ontem (8). A opção 8 precisa de leituras de dois dias diferentes. Com o `backup.json` (uma noite só), ela avisa isso; com o canal real rodando por mais de um dia, mostra a comparação.
+Os três itens "para ir além" do enunciado estão feitos: ranking (3), busca por horário (7) e hoje × ontem (8). A opção 8 precisa de leituras de dois dias diferentes. Com o histórico atual (noite simulada de 03/11 + leituras reais de 18/11), ela compara os dois dias.
+
+## Requisitos da atividade: onde estão
+
+O kit da disciplina sugere nomes de função e números de menu. Este programa foi escrito antes do kit e usa outros nomes; a tabela liga um ao outro.
+
+| Requisito | No kit | Neste `main.py` | No menu |
+|---|---|---|---|
+| 1 e 2 · Leituras de 2+ campos pela API, com timeout, status e `RequestException` | `buscar_thingspeak` | `buscar_feeds_thingspeak` (timeout 8 s, status ≠ 200 vira erro) e `obter_feeds` | 1 (no kit, 5 "Buscar dados de novo") |
+| Plano B: sem rede, lê o `backup.json` | `obter_leituras` | `obter_feeds`, `carregar_backup` | 1 |
+| 3 e 4 · Índice de Risco e faixa; configuração inválida dispara `ValueError` | `nivel`, `indice_risco`, `classificar`, `validar_config` | `calcular_nivel`, `calcular_risco`, `classificar_faixa`, `validar_config` | 4 simula uma leitura; 6 mostra limites e pesos |
+| 5 · Tendência (3 altas = PIORANDO, 3 quedas = MELHORANDO) | `tendencia` | `analisar_tendencia` (com `contar_altas_finais` e `contar_quedas_finais`) | 1 e 2 (no kit, 2 "Relatório de agora") |
+| 5 · Episódios em PERIGO e o maior deles | `maior_episodio` | `encontrar_episodios`, `maior_episodio`, `duracao_episodio` | 1 e 2 |
+| 5 · Contagem por faixa | `contar_por_faixa` | `contar_por_faixa` | 1 e 2 |
+| 6 · Histórico sem duplicar | `juntar_historico` (set de `entry_id`) | `mesclar_historico` (set de **horários**, porque o `entry_id` recomeça quando o canal é limpo) | 1 duas vezes: a segunda mostra "0 novas" |
+| 6 · `relatorio.csv` com cabeçalho, separado por `;` | `exportar_csv` | `exportar_csv` (colunas `id;data;horario;umidade_solo;inclinacao;risco;faixa`) | 5 (no kit, 4) |
+| Consultar uma leitura | `consultar_leitura` | `buscar_por_horario` (busca binária pelo horário) | 7 (no kit, 3) |
+| Menu até o Sair | `main` | `main`, `mostrar_menu` | 0 |
 
 ## Print da execução
 
@@ -98,7 +124,7 @@ Com o canal real (18/11/2026): a opção 1 buscou no ThingSpeak as 6 leituras da
 
 ![Execução do programa com o canal real do ThingSpeak](evidencias/python-execucao.png)
 
-Com o `backup.json` da noite simulada (sem internet), o mesmo relatório mostra a tendência **PIORANDO**:
+Antes da primeira busca real, o `backup.json` tinha uma noite de chuva **simulada** (1 leitura a cada 10 min, com uma leitura de campo vazio de propósito). Com ela, o mesmo relatório mostrava a tendência **PIORANDO**:
 
 ```text
 === Alerta Encosta · Rio de Janeiro ===
@@ -127,6 +153,8 @@ risco = 0,6 * nivel_umidade + 0,4 * nivel_inclinacao
 | Inclinação do terreno | field2 | 0° | 10° | **0,4** | A estaca com acelerômetro fica em pé (0°). Se ela tomba, a terra **já está se movendo**. 10° é um movimento grande e visível. O peso é menor porque a inclinação confirma o perigo, mas chega tarde para ser o único aviso. |
 
 **Faixas:** NORMAL abaixo de 40 · ATENÇÃO de 40 a 70 · PERIGO a partir de 70.
+
+**Exemplo calculado à mão:** solo com 90 % e inclinação de 4° → nível da umidade (90 − 30) / (90 − 30) × 100 = **100** e nível da inclinação (4 − 0) / (10 − 0) × 100 = **40** → risco 0,6 × 100 + 0,4 × 40 = **76** → **PERIGO**.
 
 O que isso significa na prática:
 
@@ -199,9 +227,9 @@ Cada leitura é um dicionário:
 | Arquivo | O que é |
 |---|---|
 | `main.py` | O programa |
-| `backup.json` | Última busca boa do ThingSpeak. **Vem com dados simulados** pela equipe (noite de chuva hipotética, 1 leitura a cada 10 min, com uma leitura de campo vazio de propósito) até a primeira busca real |
-| `historico.json` | Criado pelo programa: todas as leituras já vistas, sem repetir |
-| `relatorio.csv` | Criado pela opção 5: `id,horario,umidade_solo,inclinacao,risco,faixa` |
+| `backup.json` | Última busca boa do ThingSpeak (hoje: as leituras reais do canal 3584820). Antes da primeira busca real, tinha a noite simulada |
+| `historico.json` | Criado pelo programa: todas as leituras já vistas, sem repetir (a noite simulada de 03/11 + as leituras reais de 18/11) |
+| `relatorio.csv` | Criado pela opção 5, separado por `;`: `id;data;horario;umidade_solo;inclinacao;risco;faixa` |
 
 ## Integração com as outras partes
 
