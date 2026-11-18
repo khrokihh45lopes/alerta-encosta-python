@@ -96,7 +96,11 @@ Os três itens "para ir além" do enunciado estão feitos: ranking (3), busca po
 
 ## Print da execução
 
-> **TODO equipe:** troquem este bloco por um print da tela de vocês rodando **com o canal real** (`evidencias/python-execucao.png`).
+Com o canal real (18/11/2026): a opção 1 buscou no ThingSpeak as 6 leituras da demonstração no Wokwi e juntou ao histórico da noite simulada (29 + 6 = 35).
+
+![Execução do programa com o canal real do ThingSpeak](evidencias/python-execucao.png)
+
+Com o `backup.json` da noite simulada (sem internet), o mesmo relatório mostra a tendência **PIORANDO**:
 
 ```text
 === Alerta Encosta · Rio de Janeiro ===

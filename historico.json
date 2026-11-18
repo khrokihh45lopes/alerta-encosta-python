@@ -288,5 +288,65 @@
     },
     "risco": 77.5,
     "faixa": "PERIGO"
+  },
+  {
+    "id": 1,
+    "horario": "2026-11-18T02:47:25-03:00",
+    "medidas": {
+      "umidade_solo": 92.6,
+      "inclinacao": 0.0
+    },
+    "risco": 60.0,
+    "faixa": "ATENÇÃO"
+  },
+  {
+    "id": 2,
+    "horario": "2026-11-18T02:47:58-03:00",
+    "medidas": {
+      "umidade_solo": 88.6,
+      "inclinacao": 0.0
+    },
+    "risco": 58.6,
+    "faixa": "ATENÇÃO"
+  },
+  {
+    "id": 3,
+    "horario": "2026-11-18T02:48:26-03:00",
+    "medidas": {
+      "umidade_solo": 94.8,
+      "inclinacao": 90.0
+    },
+    "risco": 100.0,
+    "faixa": "PERIGO"
+  },
+  {
+    "id": 4,
+    "horario": "2026-11-18T02:48:56-03:00",
+    "medidas": {
+      "umidade_solo": 29.6,
+      "inclinacao": 0.0
+    },
+    "risco": 0.0,
+    "faixa": "NORMAL"
+  },
+  {
+    "id": 5,
+    "horario": "2026-11-18T02:51:27-03:00",
+    "medidas": {
+      "umidade_solo": 84.5,
+      "inclinacao": 0.0
+    },
+    "risco": 54.5,
+    "faixa": "ATENÇÃO"
+  },
+  {
+    "id": 6,
+    "horario": "2026-11-18T02:52:03-03:00",
+    "medidas": {
+      "umidade_solo": 83.0,
+      "inclinacao": 90.0
+    },
+    "risco": 93.0,
+    "faixa": "PERIGO"
   }
 ]
