@@ -305,15 +305,19 @@ def carregar_historico(config: Config) -> list[Leitura]:
 
 
 def mesclar_historico(historico: list[Leitura], novas: list[Leitura]) -> tuple[list[Leitura], int]:
-    """Junta as leituras novas ao histórico sem repetir entry_id. Devolve (histórico, quantas entraram)."""
-    ids_conhecidos: set[int] = {leitura["id"] for leitura in historico}
+    """Junta as leituras novas ao histórico sem repetir horário. Devolve (histórico, quantas entraram).
+
+    A leitura é reconhecida pelo horário, e não pelo entry_id, porque o ThingSpeak
+    recomeça o entry_id do 1 quando o canal é limpo (Clear Channel) ou trocado.
+    """
+    horarios_conhecidos: set[str] = {leitura["horario"] for leitura in historico}
     adicionadas = 0
     for leitura in novas:
-        if leitura["id"] not in ids_conhecidos:
+        if leitura["horario"] not in horarios_conhecidos:
             historico.append(leitura)
-            ids_conhecidos.add(leitura["id"])
+            horarios_conhecidos.add(leitura["horario"])
             adicionadas += 1
-    historico.sort(key=lambda leitura: leitura["id"])
+    historico.sort(key=lambda leitura: datetime.fromisoformat(leitura["horario"]))
     return historico, adicionadas
 
 
@@ -424,8 +428,8 @@ def piores_leituras(leituras: list[Leitura], quantidade: int = 5) -> list[Leitur
 def buscar_por_horario(historico: list[Leitura], alvo: datetime) -> Leitura | None:
     """Busca binária: devolve a leitura do histórico mais próxima do horário `alvo`.
 
-    O histórico está ordenado por id, e no ThingSpeak o id cresce junto com o
-    horário. Cada passo descarta metade da lista: 1.000 leituras pedem no
+    O histórico está ordenado por horário (`mesclar_historico` garante isso).
+    Cada passo descarta metade da lista: 1.000 leituras pedem no
     máximo 10 comparações, em vez de olhar uma por uma.
     """
     if not historico:

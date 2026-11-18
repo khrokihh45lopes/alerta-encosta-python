@@ -159,7 +159,7 @@ def criar_leitura(feed: Feed, config: Config) -> Leitura | None: ...
 | Arquivos | `carregar_json`, `salvar_json` |
 | API + plano B | `canal_configurado`, `buscar_feeds_thingspeak`, `salvar_backup`, `carregar_backup`, `obter_feeds` |
 | Modelo | `converter_horario`, `ler_medidas`, `calcular_nivel`, `calcular_risco`, `classificar_faixa`, `criar_leitura`, `converter_feeds` |
-| Memória | `leitura_valida`, `carregar_historico`, `mesclar_historico` (usa um **set** de `entry_id`), `exportar_csv` |
+| Memória | `leitura_valida`, `carregar_historico`, `mesclar_historico` (usa um **set** de horários: o `entry_id` recomeça do 1 quando o canal é limpo), `exportar_csv` |
 | Análise | `contar_altas_finais`, `contar_quedas_finais`, `analisar_tendencia`, `encontrar_episodios`, `duracao_episodio`, `maior_episodio`, `contar_por_faixa`, `leitura_de_pico`, `risco_medio`, `piores_leituras` |
 | Para ir além | `buscar_por_horario` (**busca binária**), `agrupar_por_dia`, `resumir_dia`, `comparar_dias` |
 | Apresentação | `formatar_hora`, `formatar_dia`, `formatar_duracao`, `formatar_medidas`, `montar_relatorio`, `imprimir_linhas` |
@@ -168,7 +168,7 @@ def criar_leitura(feed: Feed, config: Config) -> Leitura | None: ...
 
 ### A busca binária, passo a passo
 
-O histórico está em ordem (por `entry_id`, que cresce junto com o horário). Para achar a leitura de 03/11 18:30 em 1.000 leituras, a busca olha a do **meio**: se ela é anterior a 18:30, a resposta está na metade da direita, e a da esquerda é descartada. Senão, descarta a da direita. Em 10 passos sobra uma leitura (2¹⁰ = 1.024). No fim, compara essa leitura com a anterior a ela e devolve a mais próxima. Uma busca simples, olhando uma por uma, faria até 1.000 comparações.
+O histórico está em ordem de horário (o `mesclar_historico` ordena a cada busca). Para achar a leitura de 03/11 18:30 em 1.000 leituras, a busca olha a do **meio**: se ela é anterior a 18:30, a resposta está na metade da direita, e a da esquerda é descartada. Senão, descarta a da direita. Em 10 passos sobra uma leitura (2¹⁰ = 1.024). No fim, compara essa leitura com a anterior a ela e devolve a mais próxima. Uma busca simples, olhando uma por uma, faria até 1.000 comparações.
 
 Cada leitura é um dicionário:
 
