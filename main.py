@@ -2,6 +2,12 @@
 Alerta Encosta - O Cérebro Conectado
 Computational Thinking with Python - FIAP Global Solution 2026.2
 
+Integrante: Victor Lopes Tavares da Fonseca - RM 571315 (turma 1ESSRA-2026)
+CitizenTech: Alerta Encosta
+Problema, em uma frase: em noite de chuva forte, o morador de encosta não sabe
+se o barranco atrás da casa está no limite, e a sirene só considera a chuva da
+região, não o solo daquela encosta.
+
 Busca no ThingSpeak as leituras que o ESP32 publicou (umidade do solo e
 inclinação do terreno), cruza as duas medidas num Índice de Risco de
 deslizamento, percebe quando a situação está piorando e mantém um
@@ -322,15 +328,21 @@ def mesclar_historico(historico: list[Leitura], novas: list[Leitura]) -> tuple[l
 
 
 def exportar_csv(leituras: list[Leitura], config: Config, caminho: Path = ARQ_RELATORIO) -> bool:
-    """Exporta as leituras para CSV com cabeçalho. Devolve True se deu certo."""
+    """Exporta as leituras em CSV com cabeçalho, separado por ponto e vírgula.
+
+    Colunas: id;data;horario;<uma por medida>;risco;faixa. O ";" e o utf-8-sig
+    fazem o Excel em português abrir em colunas e com acentos certos.
+    Devolve True se deu certo.
+    """
     nomes = list(config["medidas"].keys())
     try:
-        with open(caminho, "w", newline="", encoding="utf-8") as arquivo:
-            escritor = csv.writer(arquivo)
-            escritor.writerow(["id", "horario", *nomes, "risco", "faixa"])
+        with open(caminho, "w", newline="", encoding="utf-8-sig") as arquivo:
+            escritor = csv.writer(arquivo, delimiter=";")
+            escritor.writerow(["id", "data", "horario", *nomes, "risco", "faixa"])
             for leitura in leituras:
                 valores = [leitura["medidas"][nome] for nome in nomes]
-                escritor.writerow([leitura["id"], leitura["horario"], *valores, leitura["risco"], leitura["faixa"]])
+                data, hora = leitura["horario"][:10], leitura["horario"][11:19]  # "2026-11-18T02:52:03-03:00"
+                escritor.writerow([leitura["id"], data, hora, *valores, leitura["risco"], leitura["faixa"]])
         return True
     except OSError as erro:
         print(f"  [aviso] Não consegui exportar o CSV ({erro}). O arquivo está aberto no Excel?")
