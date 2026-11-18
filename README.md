@@ -113,8 +113,8 @@ O kit da disciplina sugere nomes de função e números de menu. Este programa f
 | 5 · Tendência (3 altas = PIORANDO, 3 quedas = MELHORANDO) | `tendencia` | `analisar_tendencia` (com `contar_altas_finais` e `contar_quedas_finais`) | 1 e 2 (no kit, 2 "Relatório de agora") |
 | 5 · Episódios em PERIGO e o maior deles | `maior_episodio` | `encontrar_episodios`, `maior_episodio`, `duracao_episodio` | 1 e 2 |
 | 5 · Contagem por faixa | `contar_por_faixa` | `contar_por_faixa` | 1 e 2 |
-| 6 · Histórico sem duplicar | `juntar_historico` (set de `entry_id`) | `mesclar_historico` (set de **horários**, porque o `entry_id` recomeça quando o canal é limpo) | 1 duas vezes: a segunda mostra "0 novas" |
-| 6 · `relatorio.csv` com cabeçalho, separado por `;` | `exportar_csv` | `exportar_csv` (colunas `id;data;horario;umidade_solo;inclinacao;risco;faixa`) | 5 (no kit, 4) |
+| 6 · Histórico sem duplicar (`entry_id` num set) | `juntar_historico` | `mesclar_historico`: set de pares (`entry_id`, horário). Só o `entry_id` não basta, porque o ThingSpeak recomeça do 1 quando o canal é limpo | 1 duas vezes: a segunda mostra "0 novas" |
+| 6 · `relatorio.csv` com cabeçalho, separado por `;` | `exportar_csv` | `exportar_csv` (colunas `id;data;horario;umidade_solo;inclinacao;risco;faixa`, vírgula decimal para o Excel em português) | 5 (no kit, 4) |
 | Consultar uma leitura | `consultar_leitura` | `buscar_por_horario` (busca binária pelo horário) | 7 (no kit, 3) |
 | Menu até o Sair | `main` | `main`, `mostrar_menu` | 0 |
 
@@ -189,7 +189,7 @@ def criar_leitura(feed: Feed, config: Config) -> Leitura | None: ...
 | Arquivos | `carregar_json`, `salvar_json` |
 | API + plano B | `canal_configurado`, `buscar_feeds_thingspeak`, `salvar_backup`, `carregar_backup`, `obter_feeds` |
 | Modelo | `converter_horario`, `ler_medidas`, `calcular_nivel`, `calcular_risco`, `classificar_faixa`, `criar_leitura`, `converter_feeds` |
-| Memória | `leitura_valida`, `carregar_historico`, `mesclar_historico` (usa um **set** de horários: o `entry_id` recomeça do 1 quando o canal é limpo), `exportar_csv` |
+| Memória | `leitura_valida`, `carregar_historico`, `mesclar_historico` (usa um **set** de pares (`entry_id`, horário): o `entry_id` sozinho recomeça do 1 quando o canal é limpo), `numero_valido`, `numero_br`, `exportar_csv` |
 | Análise | `contar_altas_finais`, `contar_quedas_finais`, `analisar_tendencia`, `encontrar_episodios`, `duracao_episodio`, `maior_episodio`, `contar_por_faixa`, `leitura_de_pico`, `risco_medio`, `piores_leituras` |
 | Para ir além | `buscar_por_horario` (**busca binária**), `agrupar_por_dia`, `resumir_dia`, `comparar_dias` |
 | Apresentação | `formatar_hora`, `formatar_dia`, `formatar_duracao`, `formatar_medidas`, `montar_relatorio`, `imprimir_linhas` |
@@ -215,8 +215,8 @@ Cada leitura é um dicionário:
 | Sem internet / timeout / status ≠ 200 | `requests.RequestException` tratada → usa `backup.json` |
 | Canal não configurado | Avisa e usa `backup.json` |
 | `backup.json` ou `historico.json` ausente ou corrompido | Avisa e segue com lista vazia |
-| Item do `historico.json` editado à mão ou com outras medidas | `leitura_valida` ignora o item e avisa quantos foram ignorados |
-| Leitura com campo vazio (`null`), `entry_id` com texto ou data inválida | É descartada e contada no relatório |
+| Item do `historico.json` editado à mão (horário sem fuso, risco em texto) ou com outras medidas | `leitura_valida` ignora o item e avisa quantos foram ignorados |
+| Leitura com campo vazio (`null`), `nan`/`inf`, `entry_id` com texto ou data inválida | É descartada e contada no relatório |
 | Horário digitado no formato errado (opção 7) | Mostra o formato certo e pede de novo |
 | CSV aberto no Excel (sem permissão) | Avisa, não quebra |
 | Letras, vazio ou número fora do intervalo no teclado | Pede de novo |
@@ -229,7 +229,7 @@ Cada leitura é um dicionário:
 | `main.py` | O programa |
 | `backup.json` | Última busca boa do ThingSpeak (hoje: as leituras reais do canal 3584820). Antes da primeira busca real, tinha a noite simulada |
 | `historico.json` | Criado pelo programa: todas as leituras já vistas, sem repetir (a noite simulada de 03/11 + as leituras reais de 18/11) |
-| `relatorio.csv` | Criado pela opção 5, separado por `;`: `id;data;horario;umidade_solo;inclinacao;risco;faixa` |
+| `relatorio.csv` | Criado pela opção 5, separado por `;` e com vírgula decimal (abre em colunas no Excel em português): `id;data;horario;umidade_solo;inclinacao;risco;faixa` |
 
 ## Integração com as outras partes
 
