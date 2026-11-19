@@ -63,7 +63,7 @@ Sem internet, o programa usa o `backup.json` (a última busca boa do canal) e fu
 
 ## De onde vêm os dados
 
-- **Canal do ThingSpeak:** [3584820](https://thingspeak.mathworks.com/channels/3584820) (público), alimentado pelo ESP32 da simulação no [Wokwi](https://wokwi.com/projects/481004743836209153)
+- **Canal do ThingSpeak:** [3584820](https://thingspeak.mathworks.com/channels/3584820) (público), alimentado pelo ESP32 da simulação no [Wokwi](https://wokwi.com/projects/481157574379012097)
 - **Endereço da API:** `https://api.thingspeak.com/channels/3584820/feeds.json?results=30`
 - **Backup offline:** `backup.json`. Toda busca que devolve pelo menos uma leitura válida substitui o backup; uma busca vazia não apaga o backup bom.
 - **Origem dos valores:** as duas medidas vêm do ESP32 no Wokwi. A umidade é um potenciômetro que faz o papel do sensor capacitivo de solo, e a inclinação vem do acelerômetro MPU6050.
